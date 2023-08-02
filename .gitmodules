@@ -1,0 +1,6 @@
+[submodule "opensourcecobol4j"]
+	path = opensourcecobol4j
+	url = git@github.com:opensourcecobol/opensourcecobol4j.git
+[submodule "tree-sitter-c"]
+	path = tree-sitter-c
+	url = git@github.com:tree-sitter/tree-sitter-c.git
