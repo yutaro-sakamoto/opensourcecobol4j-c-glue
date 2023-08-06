@@ -1,5 +1,22 @@
 use std::fs;
 use tree_sitter::{Language, Parser, Query, QueryCursor};
+#[derive(Clone, Debug)]
+struct CFunction {
+    pub return_type: String,
+    pub name: String,
+    pub parameter_types: Vec<String>,
+}
+
+impl CFunction {
+    pub fn new() -> Self {
+        Self {
+            return_type: String::new(),
+            name: String::new(),
+            parameter_types: Vec::new(),
+        }
+    }
+}
+
 fn main() {
     let mut parser = Parser::new();
     parser
@@ -15,7 +32,12 @@ fn main() {
             type: (_) @return_type
             declarator: (function_declarator
                 declarator: (_) @declarator
-                parameters: (_) @parameters
+                parameters:
+                    (parameter_list
+                        (parameter_declaration
+                            type: (_)
+                        )*
+                    ) @parameters
             )
         )"#,
     )
@@ -25,6 +47,9 @@ fn main() {
     let return_type_index = query.capture_index_for_name("return_type").unwrap();
     let declarator_index = query.capture_index_for_name("declarator").unwrap();
     let parameters_index = query.capture_index_for_name("parameters").unwrap();
+    let c_function = &mut CFunction::new();
+    let mut c_functions = Vec::new();
+    let mut first_return_type = true;
     for each_match in all_matches {
         for capture in each_match.captures.iter().filter(|c| {
             c.index == return_type_index
@@ -37,6 +62,27 @@ fn main() {
             let node_type = capture.node.kind();
             let col = range.start_point.column;
             println!("[Line: {}, Col: {}] {}: `{}`", line, col, node_type, text);
+            if capture.index == return_type_index {
+                if !first_return_type {
+                    c_functions.push(c_function.clone());
+                }
+                c_function.return_type = text.to_string();
+                c_function.parameter_types.clear();
+                first_return_type = false;
+            } else if capture.index == declarator_index {
+                c_function.name = text.to_string();
+            } else if capture.index == parameters_index {
+                c_function.parameter_types.push(text.to_string());
+            }
         }
+        if first_return_type {
+            c_functions.push(c_function.clone());
+        }
+    }
+
+    for each_function in c_functions.iter() {
+        println!("Function: {}", each_function.name);
+        println!("Return Type: {}", each_function.return_type);
+        println!("Parameters: {:?}", each_function.parameter_types);
     }
 }

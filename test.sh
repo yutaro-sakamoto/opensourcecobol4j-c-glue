@@ -1,2 +1,2 @@
 #!/bin/bash
-cargo run <(cproto tests/basic/basic.c)
+cargo run <(cproto -f 2 tests/basic/basic.c)
