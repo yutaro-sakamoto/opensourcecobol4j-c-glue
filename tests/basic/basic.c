@@ -4,11 +4,11 @@ struct small_data {
   int int_data;
 };
 
-void init(struct small_data *data)
+void init(struct small_data *data, char x)
 {
-    data->char_data = 0;
-    data->short_data = 0;
-    data->int_data = 0;
+    data->char_data = x;
+    data->short_data = x;
+    data->int_data = x;
 }
 
 int main()

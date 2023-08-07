@@ -1,10 +1,16 @@
 use std::fs;
-use tree_sitter::{Language, Parser, Query, QueryCursor};
+use tree_sitter::{Parser, Query, QueryCursor};
 #[derive(Clone, Debug)]
 struct CFunction {
     pub return_type: String,
     pub name: String,
-    pub parameter_types: Vec<String>,
+    pub parameter_types: Vec<CType>,
+}
+
+#[derive(Clone, Debug)]
+struct CType {
+    pub name: String,
+    pub is_pointer: bool,
 }
 
 impl CFunction {
@@ -13,6 +19,15 @@ impl CFunction {
             return_type: String::new(),
             name: String::new(),
             parameter_types: Vec::new(),
+        }
+    }
+}
+
+impl CType {
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            is_pointer: false,
         }
     }
 }
@@ -72,12 +87,24 @@ fn main() {
             } else if capture.index == declarator_index {
                 c_function.name = text.to_string();
             } else if capture.index == parameters_index {
-                c_function.parameter_types.push(text.to_string());
+                for index in 0..capture.node.child_count() {
+                    let parameter_node = capture.node.child(index).unwrap();
+                    if parameter_node.kind() == "parameter_declaration" {
+                        let parameter_type_text = &source_code
+                            [parameter_node.range().start_byte..parameter_node.range().end_byte];
+                        c_function.parameter_types.push(CType {
+                            name: parameter_type_text.to_string(),
+                            // TODO: Check if the parameter is a pointer
+                            is_pointer: false,
+                        });
+                    }
+                }
             }
         }
-        if first_return_type {
-            c_functions.push(c_function.clone());
-        }
+    }
+
+    if !first_return_type {
+        c_functions.push(c_function.clone());
     }
 
     for each_function in c_functions.iter() {
