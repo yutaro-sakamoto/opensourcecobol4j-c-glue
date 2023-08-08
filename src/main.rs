@@ -110,6 +110,10 @@ fn extract_function_declarators<'a>(
     c_functions
 }
 
+fn c_info_source(c_functions: &Vec<CFunction>) -> String {
+    "int main() { return 0; }".to_string()
+}
+
 fn main() {
     let mut c_lang_parser = Parser::new();
     c_lang_parser
@@ -119,10 +123,12 @@ fn main() {
     let source_code = fs::read_to_string(c_file_path).unwrap();
     let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
 
-    for each_function in c_functions.iter() {
-        println!("Function: {}", each_function.name);
-        println!("Return Type: {}", each_function.return_type);
-        println!("Parameters: {:?}", each_function.parameter_types);
-        println!("======");
-    }
+    //for each_function in c_functions.iter() {
+    //    println!("Function: {}", each_function.name);
+    //    println!("Return Type: {}", each_function.return_type);
+    //    println!("Parameters: {:?}", each_function.parameter_types);
+    //    println!("======");
+    //}
+
+    println!("{}", c_info_source(&c_functions));
 }
