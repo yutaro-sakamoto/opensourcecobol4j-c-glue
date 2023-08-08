@@ -1,5 +1,5 @@
 use std::fs;
-use tree_sitter::{Parser, Query, QueryCursor};
+use tree_sitter::{Node, Parser, Query, QueryCursor};
 #[derive(Clone, Debug)]
 struct CFunction {
     pub return_type: String,
@@ -10,7 +10,7 @@ struct CFunction {
 #[derive(Clone, Debug)]
 struct CType {
     pub name: String,
-    pub is_pointer: bool,
+    pub is_pointer: u32,
 }
 
 impl CFunction {
@@ -27,20 +27,26 @@ impl CType {
     pub fn new() -> Self {
         Self {
             name: String::new(),
-            is_pointer: false,
+            is_pointer: 0,
         }
+    }
+
+    pub fn pointer_depth<'a>(pointer_node: Node<'a>) -> u32 {
+        let mut pointer_depth = 0;
+        let mut current_node = pointer_node;
+        while let Some(child_node) = current_node.child_by_field_name("declarator") {
+            pointer_depth += 1;
+            current_node = child_node
+        }
+        pointer_depth
     }
 }
 
-fn main() {
-    let mut parser = Parser::new();
-    parser
-        .set_language(tree_sitter_c::language())
-        .expect("Error loading C grammar");
-    let c_file_path = std::env::args().nth(1).expect("Missing C file path");
-    let source_code = fs::read_to_string(c_file_path).unwrap();
-    let tree = parser.parse(&source_code, None).unwrap();
-    println!("{}", tree.root_node().to_sexp());
+fn extract_function_declarators<'a>(
+    c_lang_parser: &mut Parser,
+    source_code: &'a str,
+) -> Vec<CFunction> {
+    let tree = c_lang_parser.parse(&source_code, None).unwrap();
     let query = Query::new(
         tree_sitter_c::language(),
         r#"(declaration
@@ -73,10 +79,6 @@ fn main() {
         }) {
             let range = capture.node.range();
             let text = &source_code[range.start_byte..range.end_byte];
-            let line = range.start_point.row;
-            let node_type = capture.node.kind();
-            let col = range.start_point.column;
-            println!("[Line: {}, Col: {}] {}: `{}`", line, col, node_type, text);
             if capture.index == return_type_index {
                 if !first_return_type {
                     c_functions.push(c_function.clone());
@@ -94,8 +96,7 @@ fn main() {
                             [parameter_node.range().start_byte..parameter_node.range().end_byte];
                         c_function.parameter_types.push(CType {
                             name: parameter_type_text.to_string(),
-                            // TODO: Check if the parameter is a pointer
-                            is_pointer: false,
+                            is_pointer: CType::pointer_depth(parameter_node),
                         });
                     }
                 }
@@ -106,10 +107,22 @@ fn main() {
     if !first_return_type {
         c_functions.push(c_function.clone());
     }
+    c_functions
+}
+
+fn main() {
+    let mut c_lang_parser = Parser::new();
+    c_lang_parser
+        .set_language(tree_sitter_c::language())
+        .expect("Error loading C grammar");
+    let c_file_path = std::env::args().nth(1).expect("Missing C file path");
+    let source_code = fs::read_to_string(c_file_path).unwrap();
+    let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
 
     for each_function in c_functions.iter() {
         println!("Function: {}", each_function.name);
         println!("Return Type: {}", each_function.return_type);
         println!("Parameters: {:?}", each_function.parameter_types);
+        println!("======");
     }
 }

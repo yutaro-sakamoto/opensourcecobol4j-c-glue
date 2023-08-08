@@ -4,16 +4,14 @@ struct small_data {
   int int_data;
 };
 
-void init(struct small_data *data, char x)
+void init(struct small_data *data, char x, int** y)
 {
     data->char_data = x;
     data->short_data = x;
     data->int_data = x;
 }
 
-int main()
+int destroy(struct small_data *data, int i)
 {
-    struct small_data data;
-    init(&data);
-    return 0;
+    return i;
 }
