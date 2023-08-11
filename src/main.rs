@@ -132,7 +132,42 @@ fn extract_function_declarators<'a>(
 }
 
 fn c_info_source(c_functions: &Vec<CFunction>) -> String {
-    "int main() { return 0; }".to_string()
+    let mut s = "#include <stdio.h>\n".to_string();
+    s += "int main() {\n";
+    s += "  printf(\"functions:\\n\");\n";
+    for each_function in c_functions.iter() {
+        s += &format!("  printf(\"  - func_name: {}\\n\");\n", each_function.name);
+        s += &format!(
+            "  printf(\"    return_type: {}\\n\");\n",
+            each_function.return_type
+        );
+        s += &format!("  printf(\"    parameters:\\n\");\n");
+        for each_parameter in each_function.parameter_types.iter() {
+            s += &format!(
+                "  printf(\"      - var_name: {}\\n\");\n",
+                each_parameter.var_name
+            );
+            s += &format!(
+                "  printf(\"        type_name: {}\\n\");\n",
+                each_parameter.type_name
+            );
+            s += &format!(
+                "  printf(\"        pointer_depth: {}\\n\");\n",
+                each_parameter.pointer_depth
+            );
+            let mut type_name = each_parameter.type_name.to_string();
+            for _ in 0..each_parameter.pointer_depth {
+                type_name += &format!("*");
+            }
+            s += &format!(
+                "  printf(\"        type_size: %lu\\n\", sizeof({}));\n",
+                type_name
+            );
+        }
+    }
+    s += "  return 0;\n";
+    s += "}\n";
+    s
 }
 
 fn main() {
@@ -143,13 +178,6 @@ fn main() {
     let c_file_path = std::env::args().nth(1).expect("Missing C file path");
     let source_code = fs::read_to_string(c_file_path).unwrap();
     let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
-
-    //for each_function in c_functions.iter() {
-    //    println!("Function: {}", each_function.name);
-    //    println!("Return Type: {}", each_function.return_type);
-    //    println!("Parameters: {:?}", each_function.parameter_types);
-    //    println!("======");
-    //}
 
     println!("{}", c_info_source(&c_functions));
 }
