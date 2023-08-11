@@ -4,13 +4,14 @@ use tree_sitter::{Node, Parser, Query, QueryCursor};
 struct CFunction {
     pub return_type: String,
     pub name: String,
-    pub parameter_types: Vec<CType>,
+    pub parameter_types: Vec<CParameterType>,
 }
 
 #[derive(Clone, Debug)]
-struct CType {
-    pub name: String,
-    pub is_pointer: u32,
+struct CParameterType {
+    pub var_name: String,
+    pub type_name: String,
+    pub pointer_depth: u32,
 }
 
 impl CFunction {
@@ -23,22 +24,29 @@ impl CFunction {
     }
 }
 
-impl CType {
+impl CParameterType {
     pub fn new() -> Self {
         Self {
-            name: String::new(),
-            is_pointer: 0,
+            var_name: String::new(),
+            type_name: String::new(),
+            pointer_depth: 0,
         }
     }
 
-    pub fn pointer_depth<'a>(pointer_node: Node<'a>) -> u32 {
+    pub fn get_pointer_depth_and_var_name<'a>(
+        source_code: &'a str,
+        pointer_node: Node<'a>,
+    ) -> (u32, String) {
         let mut pointer_depth = 0;
         let mut current_node = pointer_node;
         while let Some(child_node) = current_node.child_by_field_name("declarator") {
             pointer_depth += 1;
             current_node = child_node
         }
-        pointer_depth
+        (
+            pointer_depth,
+            source_code[current_node.range().start_byte..current_node.range().end_byte].to_string(),
+        )
     }
 }
 
@@ -57,6 +65,7 @@ fn extract_function_declarators<'a>(
                     (parameter_list
                         (parameter_declaration
                             type: (_)
+                            declarator: (_)
                         )*
                     ) @parameters
             )
@@ -92,11 +101,22 @@ fn extract_function_declarators<'a>(
                 for index in 0..capture.node.child_count() {
                     let parameter_node = capture.node.child(index).unwrap();
                     if parameter_node.kind() == "parameter_declaration" {
-                        let parameter_type_text = &source_code
-                            [parameter_node.range().start_byte..parameter_node.range().end_byte];
-                        c_function.parameter_types.push(CType {
-                            name: parameter_type_text.to_string(),
-                            is_pointer: CType::pointer_depth(parameter_node),
+                        let parameter_type_node =
+                            parameter_node.child_by_field_name("type").unwrap();
+                        let parameter_var_node =
+                            parameter_node.child_by_field_name("declarator").unwrap();
+                        let parameter_type_text =
+                            &source_code[parameter_type_node.range().start_byte
+                                ..parameter_type_node.range().end_byte];
+                        let (pointer_depth, parameter_var_text) =
+                            CParameterType::get_pointer_depth_and_var_name(
+                                source_code,
+                                parameter_var_node,
+                            );
+                        c_function.parameter_types.push(CParameterType {
+                            var_name: parameter_var_text,
+                            type_name: parameter_type_text.to_string(),
+                            pointer_depth: pointer_depth,
                         });
                     }
                 }
@@ -107,6 +127,7 @@ fn extract_function_declarators<'a>(
     if !first_return_type {
         c_functions.push(c_function.clone());
     }
+
     c_functions
 }
 
