@@ -3,6 +3,9 @@ use std::error;
 use std::fmt;
 use std::fs;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
+use unwrap_or::*;
+use yaml_rust::Yaml;
+use yaml_rust::{YamlEmitter, YamlLoader};
 
 #[derive(Clone, Debug)]
 struct CFunction {
@@ -176,6 +179,9 @@ enum RunningMode {
 enum GlueError {
     InvalidRunningMode(String),
     MissingRunningMode,
+    MissingFilePath,
+    UnableToReadFile(String),
+    InvalidYamlFormat(String),
 }
 
 impl fmt::Display for GlueError {
@@ -183,6 +189,13 @@ impl fmt::Display for GlueError {
         match self {
             GlueError::InvalidRunningMode(s) => write!(f, "Invalid running mode: {}", s),
             GlueError::MissingRunningMode => write!(f, "Missing running mode"),
+            GlueError::MissingFilePath => write!(f, "Missing file path"),
+            GlueError::UnableToReadFile(file_path) => {
+                write!(f, "Unable to read file: {}", file_path)
+            }
+            GlueError::InvalidYamlFormat(file_path) => {
+                write!(f, "Invalid yaml format: {}", file_path)
+            }
         }
     }
 }
@@ -213,14 +226,27 @@ fn main() -> Result<(), GlueError> {
             c_lang_parser
                 .set_language(tree_sitter_c::language())
                 .expect("Error loading C grammar");
-            let c_file_path = rest.get(0).unwrap();
-            let source_code = fs::read_to_string(c_file_path).unwrap();
+            let c_file_path = rest.get(0).expect("Missing C file path");
+            let source_code = fs::read_to_string(c_file_path).expect("Unable to C read file");
             let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
 
             println!("{}", c_info_source(&c_functions));
         }
         RunningMode::GenerateJava => {
-            println!("Generating_java is not implemented yet");
+            let yml_file_path =
+                unwrap_some_or!(rest.get(0), return Err(GlueError::MissingFilePath));
+
+            let yml_content = unwrap_ok_or!(
+                fs::read_to_string(yml_file_path),
+                _,
+                return Err(GlueError::UnableToReadFile(yml_file_path.to_string()))
+            );
+
+            let yml_docs = unwrap_ok_or!(
+                YamlLoader::load_from_str(&yml_content),
+                _,
+                return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
+            );
         }
     }
     Ok(())

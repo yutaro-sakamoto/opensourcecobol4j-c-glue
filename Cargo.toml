@@ -9,6 +9,8 @@ edition = "2021"
 tree-sitter = "0.20.10"
 tree-sitter-c = "0.20.4"
 rustop = "1.1.2"
+yaml-rust = "0.4.5"
+unwrap_or = "1.0.1"
 
 [build-dependencies]
 cc = "*"
