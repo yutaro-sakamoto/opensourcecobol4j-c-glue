@@ -1,5 +1,9 @@
+use rustop::opts;
+use std::error;
+use std::fmt;
 use std::fs;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
+
 #[derive(Clone, Debug)]
 struct CFunction {
     pub return_type: String,
@@ -25,14 +29,6 @@ impl CFunction {
 }
 
 impl CParameterType {
-    pub fn new() -> Self {
-        Self {
-            var_name: String::new(),
-            type_name: String::new(),
-            pointer_depth: 0,
-        }
-    }
-
     pub fn get_pointer_depth_and_var_name<'a>(
         source_code: &'a str,
         pointer_node: Node<'a>,
@@ -170,14 +166,62 @@ fn c_info_source(c_functions: &Vec<CFunction>) -> String {
     s
 }
 
-fn main() {
-    let mut c_lang_parser = Parser::new();
-    c_lang_parser
-        .set_language(tree_sitter_c::language())
-        .expect("Error loading C grammar");
-    let c_file_path = std::env::args().nth(1).expect("Missing C file path");
-    let source_code = fs::read_to_string(c_file_path).unwrap();
-    let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
+#[derive(Clone, Debug)]
+enum RunningMode {
+    ParseC,
+    GenerateJava,
+}
 
-    println!("{}", c_info_source(&c_functions));
+#[derive(Debug, Clone)]
+enum GlueError {
+    InvalidRunningMode(String),
+    MissingRunningMode,
+}
+
+impl fmt::Display for GlueError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GlueError::InvalidRunningMode(s) => write!(f, "Invalid running mode: {}", s),
+            GlueError::MissingRunningMode => write!(f, "Missing running mode"),
+        }
+    }
+}
+
+impl error::Error for GlueError {}
+fn main() -> Result<(), GlueError> {
+    let (args, rest) = opts! {
+        synopsis "Generate glue code for C functions and opensource COBOL 4J";
+        param mode:Option<String>, desc:"Specify running mode.";
+    }
+    .parse_or_exit();
+    let running_mode = match args.mode {
+        Some(mode) => match mode.as_str() {
+            "parse_c" => RunningMode::ParseC,
+            "generate_java" => RunningMode::GenerateJava,
+            _ => {
+                return Err(GlueError::InvalidRunningMode(
+                    "Invalid running mode".to_string(),
+                ))
+            }
+        },
+        None => return Err(GlueError::MissingRunningMode),
+    };
+
+    match running_mode {
+        RunningMode::ParseC => {
+            let mut c_lang_parser = Parser::new();
+            c_lang_parser
+                .set_language(tree_sitter_c::language())
+                .expect("Error loading C grammar");
+            let c_file_path = rest.get(0).unwrap();
+            let source_code = fs::read_to_string(c_file_path).unwrap();
+            let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
+
+            println!("{}", c_info_source(&c_functions));
+        }
+        RunningMode::GenerateJava => {
+            println!("Generating_java is not implemented yet");
+        }
+    }
+    Ok(())
 }

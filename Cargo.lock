@@ -37,6 +37,7 @@ name = "opensourcecobol4j-c-glue"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "rustop",
  "tree-sitter",
  "tree-sitter-c",
 ]
@@ -69,6 +70,12 @@ name = "regex-syntax"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ea92a5b6195c6ef2a0295ea818b312502c6fc94dde986c5553242e18fd4ce2"
+
+[[package]]
+name = "rustop"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cac77bea4e5c89acb455a2fe072bc19334cb130691af6e1bed4625d3f5396e89"
 
 [[package]]
 name = "tree-sitter"

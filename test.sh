@@ -1,5 +1,6 @@
 #!/bin/bash
 cargo build
-cargo run <(cproto -f 3 tests/basic/basic.c) > info.c
+cargo run -- parse_c <(cproto -f 3 tests/basic/basic.c) > info.c
 gcc info.c -o info
 ./info
+cargo run -- generate_java
