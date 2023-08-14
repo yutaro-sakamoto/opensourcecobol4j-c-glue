@@ -4,6 +4,7 @@ use std::fmt;
 use std::fs;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 use unwrap_or::*;
+use yaml_rust::yaml;
 use yaml_rust::Yaml;
 use yaml_rust::{YamlEmitter, YamlLoader};
 
@@ -19,6 +20,7 @@ struct CParameterType {
     pub var_name: String,
     pub type_name: String,
     pub pointer_depth: u32,
+    pub type_size: u32,
 }
 
 impl CFunction {
@@ -32,6 +34,15 @@ impl CFunction {
 }
 
 impl CParameterType {
+    pub fn new() -> Self {
+        Self {
+            var_name: String::new(),
+            type_name: String::new(),
+            pointer_depth: 0,
+            type_size: 0,
+        }
+    }
+
     pub fn get_pointer_depth_and_var_name<'a>(
         source_code: &'a str,
         pointer_node: Node<'a>,
@@ -115,6 +126,7 @@ fn extract_function_declarators<'a>(
                             var_name: parameter_var_text,
                             type_name: parameter_type_text.to_string(),
                             pointer_depth: pointer_depth,
+                            type_size: 0,
                         });
                     }
                 }
@@ -207,6 +219,52 @@ impl fmt::Display for GlueError {
 
 impl error::Error for GlueError {}
 
+/// Convert a yaml object to a vector of CFunctions
+fn yml_to_c_function(yml: &Yaml) -> Option<Vec<CFunction>> {
+    let mut c_functions = Vec::new();
+    let root_hash = yml.as_hash()?.get(&Yaml::String("functions".to_string()))?;
+    for yml_function in root_hash.as_vec()?.iter() {
+        let mut c_function = CFunction::new();
+        let hash1 = yml_function.as_hash()?;
+        c_function.name = hash1
+            .get(&Yaml::String("func_name".to_string()))?
+            .as_str()?
+            .to_string();
+        c_function.return_type = hash1
+            .get(&Yaml::String("return_type".to_string()))?
+            .as_str()?
+            .to_string();
+        let yml_parameter_types = hash1
+            .get(&Yaml::String("parameters".to_string()))?
+            .as_vec()?;
+        for yml_parameter_type in yml_parameter_types.iter() {
+            let hash2 = yml_parameter_type.as_hash()?;
+            let mut c_parameter_type = CParameterType::new();
+            c_parameter_type.var_name = hash2
+                .get(&Yaml::String("var_name".to_string()))?
+                .as_str()?
+                .to_string();
+            c_parameter_type.type_name = hash2
+                .get(&Yaml::String("type_name".to_string()))?
+                .as_str()?
+                .to_string();
+            c_parameter_type.pointer_depth = hash2
+                .get(&Yaml::String("pointer_depth".to_string()))?
+                .as_i64()?
+                .try_into()
+                .ok()?;
+            c_parameter_type.type_size = hash2
+                .get(&Yaml::String("type_size".to_string()))?
+                .as_i64()?
+                .try_into()
+                .ok()?;
+            c_function.parameter_types.push(c_parameter_type);
+        }
+        c_functions.push(c_function);
+    }
+    Some(c_functions)
+}
+
 fn main() -> Result<(), GlueError> {
     let (args, rest) = unwrap_ok_or! {opts! {
         synopsis "Generate glue code for C functions and opensource COBOL 4J";
@@ -260,6 +318,24 @@ fn main() -> Result<(), GlueError> {
                 _,
                 return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
             );
+            let c_functions = unwrap_some_or!(
+                yml_to_c_function(&yml_docs[0]),
+                return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
+            );
+
+            for c_function in c_functions.iter() {
+                println!("func_name: {}", c_function.name);
+                println!("return_type: {}", c_function.return_type);
+                println!("parameters:");
+                for c_parameter_type in c_function.parameter_types.iter() {
+                    println!("  ---");
+                    println!("  var_name: {}", c_parameter_type.var_name);
+                    println!("  type_name: {}", c_parameter_type.type_name);
+                    println!("  pointer_depth: {}", c_parameter_type.pointer_depth);
+                    println!("  type_size: {}", c_parameter_type.type_size);
+                }
+                println!("==========");
+            }
         }
     }
     Ok(())
