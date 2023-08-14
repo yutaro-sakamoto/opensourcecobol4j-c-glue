@@ -52,8 +52,8 @@ impl CParameterType {
 fn extract_function_declarators<'a>(
     c_lang_parser: &mut Parser,
     source_code: &'a str,
-) -> Vec<CFunction> {
-    let tree = c_lang_parser.parse(&source_code, None).unwrap();
+) -> Option<Vec<CFunction>> {
+    let tree = c_lang_parser.parse(&source_code, None)?;
     let query = Query::new(
         tree_sitter_c::language(),
         r#"(declaration
@@ -73,9 +73,9 @@ fn extract_function_declarators<'a>(
     .unwrap();
     let mut query_cursor = QueryCursor::new();
     let all_matches = query_cursor.matches(&query, tree.root_node(), source_code.as_bytes());
-    let return_type_index = query.capture_index_for_name("return_type").unwrap();
-    let declarator_index = query.capture_index_for_name("declarator").unwrap();
-    let parameters_index = query.capture_index_for_name("parameters").unwrap();
+    let return_type_index = query.capture_index_for_name("return_type")?;
+    let declarator_index = query.capture_index_for_name("declarator")?;
+    let parameters_index = query.capture_index_for_name("parameters")?;
     let c_function = &mut CFunction::new();
     let mut c_functions = Vec::new();
     let mut first_return_type = true;
@@ -98,12 +98,11 @@ fn extract_function_declarators<'a>(
                 c_function.name = text.to_string();
             } else if capture.index == parameters_index {
                 for index in 0..capture.node.child_count() {
-                    let parameter_node = capture.node.child(index).unwrap();
+                    let parameter_node = capture.node.child(index)?;
                     if parameter_node.kind() == "parameter_declaration" {
-                        let parameter_type_node =
-                            parameter_node.child_by_field_name("type").unwrap();
+                        let parameter_type_node = parameter_node.child_by_field_name("type")?;
                         let parameter_var_node =
-                            parameter_node.child_by_field_name("declarator").unwrap();
+                            parameter_node.child_by_field_name("declarator")?;
                         let parameter_type_text =
                             &source_code[parameter_type_node.range().start_byte
                                 ..parameter_type_node.range().end_byte];
@@ -127,7 +126,7 @@ fn extract_function_declarators<'a>(
         c_functions.push(c_function.clone());
     }
 
-    c_functions
+    Some(c_functions)
 }
 
 fn c_info_source(c_functions: &Vec<CFunction>) -> String {
@@ -177,11 +176,14 @@ enum RunningMode {
 
 #[derive(Debug, Clone)]
 enum GlueError {
+    InvalidCommandlineArguments,
     InvalidRunningMode(String),
     MissingRunningMode,
     MissingFilePath,
     UnableToReadFile(String),
     InvalidYamlFormat(String),
+    InvalidCFormat(String),
+    Other(String),
 }
 
 impl fmt::Display for GlueError {
@@ -196,17 +198,23 @@ impl fmt::Display for GlueError {
             GlueError::InvalidYamlFormat(file_path) => {
                 write!(f, "Invalid yaml format: {}", file_path)
             }
+            GlueError::InvalidCommandlineArguments => write!(f, "Invalid commandline arguments"),
+            GlueError::InvalidCFormat(file_path) => write!(f, "Invalid C format: {}", file_path),
+            GlueError::Other(s) => write!(f, "{}", s),
         }
     }
 }
 
 impl error::Error for GlueError {}
+
 fn main() -> Result<(), GlueError> {
-    let (args, rest) = opts! {
+    let (args, rest) = unwrap_ok_or! {opts! {
         synopsis "Generate glue code for C functions and opensource COBOL 4J";
         param mode:Option<String>, desc:"Specify running mode.";
-    }
-    .parse_or_exit();
+    }.parse(),
+    _,
+    return Err(GlueError::InvalidCommandlineArguments)};
+
     let running_mode = match args.mode {
         Some(mode) => match mode.as_str() {
             "parse_c" => RunningMode::ParseC,
@@ -223,13 +231,18 @@ fn main() -> Result<(), GlueError> {
     match running_mode {
         RunningMode::ParseC => {
             let mut c_lang_parser = Parser::new();
-            c_lang_parser
-                .set_language(tree_sitter_c::language())
-                .expect("Error loading C grammar");
-            let c_file_path = rest.get(0).expect("Missing C file path");
-            let source_code = fs::read_to_string(c_file_path).expect("Unable to C read file");
-            let c_functions = extract_function_declarators(&mut c_lang_parser, &source_code);
 
+            unwrap_ok_or! {c_lang_parser
+            .set_language(tree_sitter_c::language()),
+            _,
+            return Err(GlueError::Other("Error loading C grammar".to_string()))};
+
+            let c_file_path = unwrap_some_or! {rest.get(0), return Err(GlueError::MissingFilePath)};
+            let source_code = unwrap_ok_or! {fs::read_to_string(c_file_path), _, return Err(GlueError::UnableToReadFile(c_file_path.to_string()))};
+            let c_functions = unwrap_some_or! {
+                extract_function_declarators(&mut c_lang_parser, &source_code),
+                return Err(GlueError::InvalidCFormat(c_file_path.to_string()))
+            };
             println!("{}", c_info_source(&c_functions));
         }
         RunningMode::GenerateJava => {
