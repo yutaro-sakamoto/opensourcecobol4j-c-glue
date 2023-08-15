@@ -2,9 +2,10 @@ use rustop::opts;
 use std::error;
 use std::fmt;
 use std::fs;
+use std::fs::File;
+use std::io::{self, BufReader, Read, Write};
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 use unwrap_or::*;
-use yaml_rust::yaml;
 use yaml_rust::Yaml;
 use yaml_rust::{YamlEmitter, YamlLoader};
 
@@ -195,6 +196,7 @@ enum GlueError {
     UnableToReadFile(String),
     InvalidYamlFormat(String),
     InvalidCFormat(String),
+    UnableToWriteFile(String),
     Other(String),
 }
 
@@ -212,6 +214,9 @@ impl fmt::Display for GlueError {
             }
             GlueError::InvalidCommandlineArguments => write!(f, "Invalid commandline arguments"),
             GlueError::InvalidCFormat(file_path) => write!(f, "Invalid C format: {}", file_path),
+            GlueError::UnableToWriteFile(file_path) => {
+                write!(f, "Unable to write file: {}", file_path)
+            }
             GlueError::Other(s) => write!(f, "{}", s),
         }
     }
@@ -263,6 +268,19 @@ fn yml_to_c_function(yml: &Yaml) -> Option<Vec<CFunction>> {
         c_functions.push(c_function);
     }
     Some(c_functions)
+}
+
+fn get_java_file_content(c_function: &CFunction) -> String {
+    let mut s = "".to_string();
+    s += &format!("public class {} CobolRunnable {{\n", c_function.name);
+    s += "}";
+    s
+}
+
+fn write_file(file: &mut File, content: String) -> Result<(), Box<std::io::Error>> {
+    file.write_all(content.as_bytes())?;
+    file.flush()?;
+    Ok(())
 }
 
 fn main() -> Result<(), GlueError> {
@@ -335,6 +353,21 @@ fn main() -> Result<(), GlueError> {
                     println!("  type_size: {}", c_parameter_type.type_size);
                 }
                 println!("==========");
+            }
+
+            for c_function in c_functions.iter() {
+                let java_file_path = &format!("{}.java", c_function.name);
+                let mut java_file = unwrap_ok_or! {
+                    File::create(java_file_path),
+                    _,
+                    return Err(GlueError::UnableToWriteFile(java_file_path.to_string()))
+                };
+                let java_file_content = get_java_file_content(c_function);
+                unwrap_ok_or! {
+                    write_file(&mut java_file, java_file_content),
+                    _,
+                    return Err(GlueError::UnableToWriteFile(java_file_path.to_string()))
+                };
             }
         }
     }
