@@ -272,8 +272,27 @@ fn yml_to_c_function(yml: &Yaml) -> Option<Vec<CFunction>> {
 
 fn get_java_file_content(c_function: &CFunction) -> String {
     let mut s = "".to_string();
-    s += &format!("public class {} CobolRunnable {{\n", c_function.name);
-    s += "}";
+    s += "import jp.osscons.opensourcecobol.libcobj.common.*;\n";
+    s += "import jp.osscons.opensourcecobol.libcobj.call.*;\n";
+    s += "import jp.osscons.opensourcecobol.libcobj.data.*;\n";
+
+    s += &format!(
+        "public class {} implements CobolRunnable {{\n",
+        c_function.name
+    );
+
+    s += "  @Override\n";
+    s += "  public int run(CobolDataStorage... argStorages) {\n";
+    s += "    return 0;\n";
+    s += "  }\n";
+    s += "  @Override\n";
+    s += "  public void cancel() {\n";
+    s += "  }\n";
+    s += "  @Override\n";
+    s += "  public boolean isActive() {\n";
+    s += "    return false;\n";
+    s += "  }\n";
+    s += "}\n";
     s
 }
 

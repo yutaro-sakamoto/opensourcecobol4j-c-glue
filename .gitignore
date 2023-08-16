@@ -2,3 +2,5 @@
 info.c
 info
 *.java
+*.class
+.function_schema
