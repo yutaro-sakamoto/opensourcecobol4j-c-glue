@@ -59,6 +59,36 @@ impl CParameterType {
             source_code[current_node.range().start_byte..current_node.range().end_byte].to_string(),
         )
     }
+
+    pub fn convert_to_java_type(&self) -> PossibleJavaType {
+        match &*self.type_name {
+            "int" => PossibleJavaType::Int,
+            "unsigned int" => PossibleJavaType::Int,
+            "char" => PossibleJavaType::Byte,
+            "unsigned char" => PossibleJavaType::Byte,
+            "short" => PossibleJavaType::Short,
+            "unsigned short" => PossibleJavaType::Short,
+            _ => PossibleJavaType::ByteArray,
+        }
+    }
+}
+
+enum PossibleJavaType {
+    Byte,
+    Short,
+    Int,
+    ByteArray,
+}
+
+impl fmt::Display for PossibleJavaType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PossibleJavaType::Byte => write!(f, "byte"),
+            PossibleJavaType::Short => write!(f, "short"),
+            PossibleJavaType::Int => write!(f, "int"),
+            PossibleJavaType::ByteArray => write!(f, "byte[]"),
+        }
+    }
 }
 
 fn extract_function_declarators<'a>(
@@ -280,6 +310,20 @@ fn get_java_file_content(c_function: &CFunction) -> String {
         "public class {} implements CobolRunnable {{\n",
         c_function.name
     );
+
+    s += &format!("  public native void {}(", c_function.name);
+    let num_of_parameters = c_function.parameter_types.len();
+    for (i, parameter_type) in c_function.parameter_types.iter().enumerate() {
+        s += &format!(
+            "{} {}",
+            parameter_type.convert_to_java_type(),
+            parameter_type.var_name
+        );
+        if i != num_of_parameters - 1 {
+            s += ", ";
+        }
+    }
+    s += ");\n";
 
     s += "  @Override\n";
     s += "  public int run(CobolDataStorage... argStorages) {\n";

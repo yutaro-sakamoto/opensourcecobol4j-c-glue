@@ -4,7 +4,7 @@ struct small_data {
   int int_data;
 };
 
-void init(struct small_data *data, char x, int** y)
+void init(struct small_data *data, char x, int y)
 {
     data->char_data = x;
     data->short_data = x;
