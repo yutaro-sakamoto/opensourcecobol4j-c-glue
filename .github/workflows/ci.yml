@@ -3,6 +3,8 @@ on:
   push:
   pull_request:
     types: [opened, reopened, review_requested, synchronize]
+env:
+  CLASSPATH: ":/usr/lib/opensourcecobol4j/libcobj.jar:/usr/lib/opensourcecobol4j/sqlite.jar"
 
 jobs:
   build:
@@ -13,7 +15,24 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get install -y cproto
+        sudo apt-get install -y cproto build-essential bison flex gettext texinfo automake autoconf
+
+    - name: Setup JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: temurin
+        java-version: 11
+
+    - name: Install opensource COBOL 4J v1.0.13
+      run: |
+        sudo mkdir /usr/lib/opensourcecobol4j
+        curl -L -o opensourcecobol4j.tar.gz -k https://github.com/opensourcecobol/opensourcecobol4j/archive/refs/tags/v1.0.13.tar.gz
+        sudo curl -L -o /usr/lib/opensourcecobol4j/sqlite.jar -k https://github.com/xerial/sqlite-jdbc/releases/download/3.36.0.3/sqlite-jdbc-3.36.0.3.jar
+        tar zxf opensourcecobol4j.tar.gz
+        cd opensourcecobol4j-1.0.13
+        ./configure --prefix=/usr/
+        make
+        sudo make install
 
     - uses: actions/cache@v3
       with:
