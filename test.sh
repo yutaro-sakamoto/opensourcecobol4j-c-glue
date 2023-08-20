@@ -5,3 +5,4 @@ gcc info.c -o info
 ./info | tee function_schema.yml
 cargo run -- generate_java function_schema.yml
 javac -h . *.java
+cargo run -- generate_c function_schema.yml

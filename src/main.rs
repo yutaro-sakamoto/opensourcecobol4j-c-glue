@@ -215,6 +215,7 @@ fn c_info_source(c_functions: &Vec<CFunction>) -> String {
 enum RunningMode {
     ParseC,
     GenerateJava,
+    GenerateC,
 }
 
 #[derive(Debug, Clone)]
@@ -346,6 +347,27 @@ fn write_file(file: &mut File, content: String) -> Result<(), Box<std::io::Error
     Ok(())
 }
 
+fn read_c_functions_from_yml(rest: &Vec<String>) -> Result<Vec<CFunction>, GlueError> {
+    let yml_file_path = unwrap_some_or!(rest.get(0), return Err(GlueError::MissingFilePath));
+
+    let yml_content = unwrap_ok_or!(
+        fs::read_to_string(yml_file_path),
+        _,
+        return Err(GlueError::UnableToReadFile(yml_file_path.to_string()))
+    );
+
+    let yml_docs = unwrap_ok_or!(
+        YamlLoader::load_from_str(&yml_content),
+        _,
+        return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
+    );
+    let c_functions = unwrap_some_or!(
+        yml_to_c_function(&yml_docs[0]),
+        return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
+    );
+    Ok(c_functions)
+}
+
 fn main() -> Result<(), GlueError> {
     let (args, rest) = unwrap_ok_or! {opts! {
         synopsis "Generate glue code for C functions and opensource COBOL 4J";
@@ -358,6 +380,7 @@ fn main() -> Result<(), GlueError> {
         Some(mode) => match mode.as_str() {
             "parse_c" => RunningMode::ParseC,
             "generate_java" => RunningMode::GenerateJava,
+            "generate_c" => RunningMode::GenerateC,
             _ => {
                 return Err(GlueError::InvalidRunningMode(
                     "Invalid running mode".to_string(),
@@ -385,25 +408,7 @@ fn main() -> Result<(), GlueError> {
             println!("{}", c_info_source(&c_functions));
         }
         RunningMode::GenerateJava => {
-            let yml_file_path =
-                unwrap_some_or!(rest.get(0), return Err(GlueError::MissingFilePath));
-
-            let yml_content = unwrap_ok_or!(
-                fs::read_to_string(yml_file_path),
-                _,
-                return Err(GlueError::UnableToReadFile(yml_file_path.to_string()))
-            );
-
-            let yml_docs = unwrap_ok_or!(
-                YamlLoader::load_from_str(&yml_content),
-                _,
-                return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
-            );
-            let c_functions = unwrap_some_or!(
-                yml_to_c_function(&yml_docs[0]),
-                return Err(GlueError::InvalidYamlFormat(yml_file_path.to_string()))
-            );
-
+            let c_functions = read_c_functions_from_yml(&rest)?;
             for c_function in c_functions.iter() {
                 println!("func_name: {}", c_function.name);
                 println!("return_type: {}", c_function.return_type);
@@ -432,6 +437,10 @@ fn main() -> Result<(), GlueError> {
                     return Err(GlueError::UnableToWriteFile(java_file_path.to_string()))
                 };
             }
+        }
+        RunningMode::GenerateC => {
+            let c_functions = read_c_functions_from_yml(&rest)?;
+            println!("Generating C files is not implemented.");
         }
     }
     Ok(())
