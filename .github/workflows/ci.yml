@@ -5,6 +5,7 @@ on:
     types: [opened, reopened, review_requested, synchronize]
 env:
   CLASSPATH: ":/usr/lib/opensourcecobol4j/libcobj.jar:/usr/lib/opensourcecobol4j/sqlite.jar"
+  OC4J_C_GLUE_JNI_INCLUDE: "-I/usr/lib/jvm/temurin-11-jdk-amd64/include/ -I/usr/lib/jvm/temurin-11-jdk-amd64/include/linux/"
 
 jobs:
   build:

@@ -341,6 +341,38 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     s
 }
 
+fn get_c_file_content(c_function: &CFunction) -> String {
+    let mut s = "".to_string();
+    s += &format!("#include \"{}.h\"\n", c_function.name);
+
+    s += &format!(
+        "JNIEXPORT void JNICALL Java_{}_{}\n",
+        c_function.name, c_function.name
+    );
+    s += &format!("(JNIEnv *env , jobject object");
+
+    for param in c_function.parameter_types.iter() {
+        match param.convert_to_java_type() {
+            PossibleJavaType::Byte => {
+                s += &format!(", jbyte {}", param.var_name);
+            }
+            PossibleJavaType::Short => {
+                s += &format!(", jshort {}", param.var_name);
+            }
+            PossibleJavaType::Int => {
+                s += &format!(", jint {}", param.var_name);
+            }
+            PossibleJavaType::ByteArray => {
+                s += &format!(", jbyteArray {}", param.var_name);
+            }
+        }
+    }
+    s += ")\n{\n";
+    s += "  // not implemented\n";
+    s += "}\n";
+    s
+}
+
 fn write_file(file: &mut File, content: String) -> Result<(), Box<std::io::Error>> {
     file.write_all(content.as_bytes())?;
     file.flush()?;
@@ -440,7 +472,21 @@ fn main() -> Result<(), GlueError> {
         }
         RunningMode::GenerateC => {
             let c_functions = read_c_functions_from_yml(&rest)?;
-            println!("Generating C files is not implemented.");
+
+            for c_function in c_functions.iter() {
+                let c_file_path = &format!("{}.c", c_function.name);
+                let mut c_file = unwrap_ok_or! {
+                    File::create(c_file_path),
+                    _,
+                    return Err(GlueError::UnableToWriteFile(c_file_path.to_string()))
+                };
+                let java_file_content = get_c_file_content(c_function);
+                unwrap_ok_or! {
+                    write_file(&mut c_file, java_file_content),
+                    _,
+                    return Err(GlueError::UnableToWriteFile(c_file_path.to_string()))
+                };
+            }
         }
     }
     Ok(())
