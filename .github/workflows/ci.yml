@@ -6,6 +6,7 @@ on:
 env:
   CLASSPATH: ":/usr/lib/opensourcecobol4j/libcobj.jar:/usr/lib/opensourcecobol4j/sqlite.jar"
   OC4J_C_GLUE_JNI_INCLUDE: "-I/usr/lib/jvm/temurin-11-jdk-amd64/include/ -I/usr/lib/jvm/temurin-11-jdk-amd64/include/linux/"
+  OC4J_VERSION: "1.0.13"
 
 jobs:
   build:
@@ -16,7 +17,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get install -y cproto build-essential bison flex gettext texinfo automake autoconf
+        sudo apt-get install -y cproto
 
     - name: Setup JDK
       uses: actions/setup-java@v3
@@ -24,15 +25,33 @@ jobs:
         distribution: temurin
         java-version: 11
 
-    - name: Install opensource COBOL 4J v1.0.13
+    - name: Install SQLite JDBC
       run: |
-        sudo mkdir /usr/lib/opensourcecobol4j
-        curl -L -o opensourcecobol4j.tar.gz -k https://github.com/opensourcecobol/opensourcecobol4j/archive/refs/tags/v1.0.13.tar.gz
+        sudo mkdir -p /usr/lib/opensourcecobol4j
         sudo curl -L -o /usr/lib/opensourcecobol4j/sqlite.jar -k https://github.com/xerial/sqlite-jdbc/releases/download/3.36.0.3/sqlite-jdbc-3.36.0.3.jar
+
+    - name: Cache opensource COBOL 4J
+      id: cache-opensourcecobol4j
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-opensourcecobol4j
+      with:
+        path: opensourcecobol4j-${{ env.OC4J_VERSION }}
+        key: ${{ runner.os }}-opensourcecobol4j-${{ env.OC4J_VERSION }}
+    
+    - if: ${{ steps.cache-opensourcecobol4j.outputs.cache-hit != 'true' }}
+      name: Build opensource COBOL 4J ${{ env.OC4J_VERSIOIN }}
+      run: |
+        sudo apt-get install -y build-essential bison flex gettext texinfo automake autoconf
+        curl -L -o opensourcecobol4j.tar.gz -k https://github.com/opensourcecobol/opensourcecobol4j/archive/refs/tags/v${OC4J_VERSION}.tar.gz
         tar zxf opensourcecobol4j.tar.gz
-        cd opensourcecobol4j-1.0.13
+        cd opensourcecobol4j-${OC4J_VERSION}
         ./configure --prefix=/usr/
         make
+
+    - name: Install opensource COBOL 4J ${{ env.OC4J_VERSIOIN }}
+      run: |
+        cd opensourcecobol4j-${OC4J_VERSION}
         sudo make install
 
     - uses: actions/cache@v3
