@@ -350,6 +350,20 @@ fn get_c_file_content(c_function: &CFunction) -> String {
     let mut s = "".to_string();
     s += &format!("#include \"{}.h\"\n", c_function.name);
 
+    let num_of_params = c_function.parameter_types.len();
+
+    s += &format!("extern {} {}(", c_function.return_type, c_function.name);
+    for (index, param) in c_function.parameter_types.iter().enumerate() {
+        s += &format!("{}", param.type_name);
+        if param.pointer_depth > 0 {
+            s += "*";
+        }
+        if index < num_of_params - 1 {
+            s += ", ";
+        }
+    }
+    s += ");\n";
+
     s += &format!(
         "JNIEXPORT void JNICALL Java_{}_{}\n",
         c_function.name, c_function.name
@@ -399,16 +413,22 @@ fn get_c_file_content(c_function: &CFunction) -> String {
         }
     }
 
-    /*for param in c_function.parameter_types.iter() {
+    s += &format!("  {}(", c_function.name);
+    for (index, param) in c_function.parameter_types.iter().enumerate() {
         match param.convert_to_java_type() {
             PossibleJavaType::Byte | PossibleJavaType::Short | PossibleJavaType::Int => {
-                if(param.pointer_depth == 1) {
-                    s += &format("&");
+                if param.pointer_depth == 1 {
+                    s += &format!("&");
                 }
-
+                s += &format!("{}{}", C_LOCAL_PARAM_PREFIX, param.var_name);
             }
+            _ => {}
         }
-    }*/
+        if index < num_of_params - 1 {
+            s += ", ";
+        }
+    }
+    s += ");\n";
     s += "}\n";
     s
 }
