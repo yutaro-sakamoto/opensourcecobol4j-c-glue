@@ -344,6 +344,8 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     s
 }
 
+static C_LOCAL_PARAM_PREFIX: &'static str = "oc4j_glue_";
+
 fn get_c_file_content(c_function: &CFunction) -> String {
     let mut s = "".to_string();
     s += &format!("#include \"{}.h\"\n", c_function.name);
@@ -371,7 +373,42 @@ fn get_c_file_content(c_function: &CFunction) -> String {
         }
     }
     s += ")\n{\n";
-    s += "  // not implemented\n";
+    for param in c_function.parameter_types.iter() {
+        match param.convert_to_java_type() {
+            PossibleJavaType::Byte => {
+                s += &format!(
+                    "  char {}{} = {};\n",
+                    C_LOCAL_PARAM_PREFIX, param.var_name, param.var_name
+                );
+            }
+            PossibleJavaType::Short => {
+                s += &format!(
+                    "  short {}{} = {};\n",
+                    C_LOCAL_PARAM_PREFIX, param.var_name, param.var_name
+                );
+            }
+            PossibleJavaType::Int => {
+                s += &format!(
+                    "  int {}{} = {};\n",
+                    C_LOCAL_PARAM_PREFIX, param.var_name, param.var_name
+                );
+            }
+            PossibleJavaType::ByteArray => {
+                s += &format!("// Generatoin code for Byte Array not implemented\n");
+            }
+        }
+    }
+
+    /*for param in c_function.parameter_types.iter() {
+        match param.convert_to_java_type() {
+            PossibleJavaType::Byte | PossibleJavaType::Short | PossibleJavaType::Int => {
+                if(param.pointer_depth == 1) {
+                    s += &format("&");
+                }
+
+            }
+        }
+    }*/
     s += "}\n";
     s
 }

@@ -4,11 +4,9 @@ struct small_data {
   int int_data;
 };
 
-void init(struct small_data *data, char x, int y)
+void init(int x)
 {
-    data->char_data = x;
-    data->short_data = x;
-    data->int_data = x;
+   printf("C function init x=%d\n", x);
 }
 
 int destroy(struct small_data *data, int i)
