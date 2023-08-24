@@ -153,6 +153,9 @@ fn extract_function_declarators<'a>(
                                 source_code,
                                 parameter_var_node,
                             );
+                        if pointer_depth > 1 {
+                            return None;
+                        }
                         c_function.parameter_types.push(CParameterType {
                             var_name: parameter_var_text,
                             type_name: parameter_type_text.to_string(),
