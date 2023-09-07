@@ -329,6 +329,18 @@ fn get_java_file_content(c_function: &CFunction) -> String {
 
     s += "  @Override\n";
     s += "  public int run(CobolDataStorage... argStorages) {\n";
+
+    for (i, parameter_type) in c_function.parameter_types.iter().enumerate() {
+        match parameter_type.convert_to_java_type() {
+            PossibleJavaType::ByteArray => {
+                s += &format!(
+                    "    byte[] {} = storageToByteArray(argStorages[{}], {});\n",
+                    parameter_type.var_name, i, parameter_type.type_size
+                );
+            }
+            _ => {}
+        }
+    }
     s += &format!("    {}(", c_function.name);
     for (i, parameter_type) in c_function.parameter_types.iter().enumerate() {
         match parameter_type.convert_to_java_type() {
@@ -342,10 +354,7 @@ fn get_java_file_content(c_function: &CFunction) -> String {
                 s += &format!("storageToInt(argStorages[{}])", i);
             }
             PossibleJavaType::ByteArray => {
-                s += &format!(
-                    "storageToByteArray(argStorages[{}], {})",
-                    i, parameter_type.type_size
-                );
+                s += &format!("{}", parameter_type.var_name);
             }
         };
         if i != num_of_parameters - 1 {
@@ -353,14 +362,18 @@ fn get_java_file_content(c_function: &CFunction) -> String {
         }
     }
     s += ");\n";
+    for (i, parameter_type) in c_function.parameter_types.iter().enumerate() {
+        match parameter_type.convert_to_java_type() {
+            PossibleJavaType::ByteArray => {
+                s += &format!(
+                    "    bytesToStorage(argStorages[{}], {});\n",
+                    i, parameter_type.var_name
+                );
+            }
+            _ => {}
+        }
+    }
     s += "    return 0;\n";
-    s += "  }\n";
-    s += "  @Override\n";
-    s += "  public void cancel() {\n";
-    s += "  }\n";
-    s += "  @Override\n";
-    s += "  public boolean isActive() {\n";
-    s += "    return false;\n";
     s += "  }\n";
     s += "}\n";
     s

@@ -10,3 +10,4 @@ cargo run -- generate_c function_schema.yml
 # local settings
 # export OC4J_C_GLUE_JNI_INCLUDE="-I/usr/lib/jvm/java-11-openjdk-amd64/include/ -I/usr/lib/jvm/java-11-openjdk-amd64/include/linux/""
 gcc ${OC4J_C_GLUE_JNI_INCLUDE} -shared -o init.so init.c basic.o
+javac *.java
