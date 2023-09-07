@@ -306,12 +306,10 @@ fn yml_to_c_function(yml: &Yaml) -> Option<Vec<CFunction>> {
 
 fn get_java_file_content(c_function: &CFunction) -> String {
     let mut s = "".to_string();
-    s += "import jp.osscons.opensourcecobol.libcobj.common.*;\n";
-    s += "import jp.osscons.opensourcecobol.libcobj.call.*;\n";
-    s += "import jp.osscons.opensourcecobol.libcobj.data.*;\n";
+    s += "import jp.osscons.opensourcecobol.libcobj.data.CobolDataStorage;\n";
 
     s += &format!(
-        "public class {} implements CobolRunnable {{\n",
+        "public class {} extends CobolRunnableCGlue {{\n",
         c_function.name
     );
 
@@ -331,6 +329,30 @@ fn get_java_file_content(c_function: &CFunction) -> String {
 
     s += "  @Override\n";
     s += "  public int run(CobolDataStorage... argStorages) {\n";
+    s += &format!("    {}(", c_function.name);
+    for (i, parameter_type) in c_function.parameter_types.iter().enumerate() {
+        match parameter_type.convert_to_java_type() {
+            PossibleJavaType::Byte => {
+                s += &format!("storageToByte(argStorages[{}])", i);
+            }
+            PossibleJavaType::Short => {
+                s += &format!("storageToShort(argStorages[{}])", i);
+            }
+            PossibleJavaType::Int => {
+                s += &format!("storageToInt(argStorages[{}])", i);
+            }
+            PossibleJavaType::ByteArray => {
+                s += &format!(
+                    "storageToByteArray(argStorages[{}], {})",
+                    i, parameter_type.type_size
+                );
+            }
+        };
+        if i != num_of_parameters - 1 {
+            s += ", ";
+        }
+    }
+    s += ");\n";
     s += "    return 0;\n";
     s += "  }\n";
     s += "  @Override\n";
