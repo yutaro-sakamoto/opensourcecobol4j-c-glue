@@ -327,6 +327,11 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     }
     s += ");\n";
 
+    s += &format!(
+        "  static {{ System.loadLibrary(\"{}\"); }}\n",
+        c_function.name
+    );
+
     s += "  @Override\n";
     s += "  public int run(CobolDataStorage... argStorages) {\n";
 
