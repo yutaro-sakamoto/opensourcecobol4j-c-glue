@@ -14,7 +14,7 @@ mod cparam;
 mod java_type;
 
 use cfunc::CFunction;
-use cparam::CParameterType;
+use cparam::CParameter;
 use java_type::PossibleJavaType;
 
 impl fmt::Display for PossibleJavaType {
@@ -86,14 +86,14 @@ fn extract_function_declarators<'a>(
                             &source_code[parameter_type_node.range().start_byte
                                 ..parameter_type_node.range().end_byte];
                         let (pointer_depth, parameter_var_text) =
-                            CParameterType::get_pointer_depth_and_var_name(
+                            CParameter::get_pointer_depth_and_var_name(
                                 source_code,
                                 parameter_var_node,
                             );
                         if pointer_depth > 1 {
                             return None;
                         }
-                        c_function.parameter_types.push(CParameterType {
+                        c_function.parameter_types.push(CParameter {
                             var_name: parameter_var_text,
                             type_name: parameter_type_text.to_string(),
                             pointer_depth: pointer_depth,
@@ -215,7 +215,7 @@ fn yml_to_c_function(yml: &Yaml) -> Option<Vec<CFunction>> {
             .as_vec()?;
         for yml_parameter_type in yml_parameter_types.iter() {
             let hash2 = yml_parameter_type.as_hash()?;
-            let mut c_parameter_type = CParameterType::new();
+            let mut c_parameter_type = CParameter::new();
             c_parameter_type.var_name = hash2
                 .get(&Yaml::String("var_name".to_string()))?
                 .as_str()?

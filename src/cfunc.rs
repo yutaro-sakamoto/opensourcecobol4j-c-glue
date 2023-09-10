@@ -1,10 +1,10 @@
-use crate::cparam::CParameterType;
+use crate::cparam::CParameter;
 
 #[derive(Clone, Debug)]
 pub struct CFunction {
     pub return_type: String,
     pub name: String,
-    pub parameter_types: Vec<CParameterType>,
+    pub parameter_types: Vec<CParameter>,
 }
 
 impl CFunction {

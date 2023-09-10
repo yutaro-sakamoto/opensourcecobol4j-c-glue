@@ -2,14 +2,14 @@ use crate::java_type::PossibleJavaType;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 
 #[derive(Clone, Debug)]
-pub struct CParameterType {
+pub struct CParameter {
     pub var_name: String,
     pub type_name: String,
     pub pointer_depth: u32,
     pub type_size: u32,
 }
 
-impl CParameterType {
+impl CParameter {
     pub fn new() -> Self {
         Self {
             var_name: String::new(),
