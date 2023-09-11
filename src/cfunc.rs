@@ -4,7 +4,7 @@ use crate::cparam::CParameter;
 pub struct CFunction {
     pub return_type: String,
     pub name: String,
-    pub parameter_types: Vec<CParameter>,
+    pub parameters: Vec<CParameter>,
 }
 
 impl CFunction {
@@ -12,7 +12,7 @@ impl CFunction {
         Self {
             return_type: String::new(),
             name: String::new(),
-            parameter_types: Vec::new(),
+            parameters: Vec::new(),
         }
     }
 }
