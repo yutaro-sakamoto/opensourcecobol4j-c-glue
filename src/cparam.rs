@@ -1,4 +1,6 @@
-use crate::java_type::PossibleJavaType;
+use std::any::type_name;
+
+use crate::java_type::{self, PossibleJavaType};
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 
 #[derive(Clone, Debug)]
@@ -7,15 +9,18 @@ pub struct CParameter {
     pub type_name: String,
     pub pointer_depth: u32,
     pub type_size: u32,
+    pub java_type: PossibleJavaType,
 }
 
 impl CParameter {
-    pub fn new() -> Self {
+    pub fn new(var_name: &str, type_name: &str, pointer_depth: u32, type_size: u32) -> Self {
+        let java_type = Self::convert_to_java_type(type_name);
         Self {
-            var_name: String::new(),
-            type_name: String::new(),
-            pointer_depth: 0,
-            type_size: 0,
+            var_name: var_name.to_string(),
+            type_name: type_name.to_string(),
+            pointer_depth: pointer_depth,
+            type_size: type_size,
+            java_type: java_type,
         }
     }
 
@@ -35,8 +40,8 @@ impl CParameter {
         )
     }
 
-    pub fn convert_to_java_type(&self) -> PossibleJavaType {
-        match &*self.type_name {
+    fn convert_to_java_type(type_name: &str) -> PossibleJavaType {
+        match type_name {
             "int" => PossibleJavaType::Int,
             "unsigned int" => PossibleJavaType::Int,
             "char" => PossibleJavaType::Byte,

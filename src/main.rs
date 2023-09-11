@@ -93,12 +93,12 @@ fn extract_function_declarators<'a>(
                         if pointer_depth > 1 {
                             return None;
                         }
-                        c_function.parameters.push(CParameter {
-                            var_name: parameter_var_text,
-                            type_name: parameter_type_text.to_string(),
-                            pointer_depth: pointer_depth,
-                            type_size: 0,
-                        });
+                        c_function.parameters.push(CParameter::new(
+                            &parameter_var_text,
+                            parameter_type_text,
+                            pointer_depth,
+                            0,
+                        ));
                     }
                 }
             }
@@ -213,28 +213,32 @@ fn yml_to_c_function(yml: &Yaml) -> Option<Vec<CFunction>> {
         let yml_parameter_types = hash1
             .get(&Yaml::String("parameters".to_string()))?
             .as_vec()?;
-        for yml_parameter_type in yml_parameter_types.iter() {
-            let hash2 = yml_parameter_type.as_hash()?;
-            let mut c_parameter_type = CParameter::new();
-            c_parameter_type.var_name = hash2
+        for yml_parameter in yml_parameter_types.iter() {
+            let hash2 = yml_parameter.as_hash()?;
+            let var_name = hash2
                 .get(&Yaml::String("var_name".to_string()))?
                 .as_str()?
                 .to_string();
-            c_parameter_type.type_name = hash2
+            let type_name = hash2
                 .get(&Yaml::String("type_name".to_string()))?
                 .as_str()?
                 .to_string();
-            c_parameter_type.pointer_depth = hash2
+            let pointer_depth = hash2
                 .get(&Yaml::String("pointer_depth".to_string()))?
                 .as_i64()?
                 .try_into()
                 .ok()?;
-            c_parameter_type.type_size = hash2
+            let type_size = hash2
                 .get(&Yaml::String("type_size".to_string()))?
                 .as_i64()?
                 .try_into()
                 .ok()?;
-            c_function.parameters.push(c_parameter_type);
+            c_function.parameters.push(CParameter::new(
+                &var_name,
+                &type_name,
+                pointer_depth,
+                type_size,
+            ));
         }
         c_functions.push(c_function);
     }
@@ -253,11 +257,7 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     s += &format!("  public native void {}(", c_function.name);
     let num_of_parameters = c_function.parameters.len();
     for (i, parameter_type) in c_function.parameters.iter().enumerate() {
-        s += &format!(
-            "{} {}",
-            parameter_type.convert_to_java_type(),
-            parameter_type.var_name
-        );
+        s += &format!("{} {}", parameter_type.java_type, parameter_type.var_name);
         if i != num_of_parameters - 1 {
             s += ", ";
         }
@@ -273,7 +273,7 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     s += "  public int run(CobolDataStorage... argStorages) {\n";
 
     for (i, parameter_type) in c_function.parameters.iter().enumerate() {
-        match parameter_type.convert_to_java_type() {
+        match parameter_type.java_type {
             PossibleJavaType::ByteArray => {
                 s += &format!(
                     "    byte[] {} = storageToByteArray(argStorages[{}], {});\n",
@@ -285,7 +285,7 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     }
     s += &format!("    {}(", c_function.name);
     for (i, parameter_type) in c_function.parameters.iter().enumerate() {
-        match parameter_type.convert_to_java_type() {
+        match parameter_type.java_type {
             PossibleJavaType::Byte => {
                 s += &format!("storageToByte(argStorages[{}])", i);
             }
@@ -305,7 +305,7 @@ fn get_java_file_content(c_function: &CFunction) -> String {
     }
     s += ");\n";
     for (i, parameter_type) in c_function.parameters.iter().enumerate() {
-        match parameter_type.convert_to_java_type() {
+        match parameter_type.java_type {
             PossibleJavaType::ByteArray => {
                 s += &format!(
                     "    bytesToStorage(argStorages[{}], {});\n",
@@ -348,7 +348,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
     s += &format!("(JNIEnv *env , jobject object");
 
     for param in c_function.parameters.iter() {
-        match param.convert_to_java_type() {
+        match param.java_type {
             PossibleJavaType::Byte => {
                 s += &format!(", jbyte {}", param.var_name);
             }
@@ -365,7 +365,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
     }
     s += ")\n{\n";
     for param in c_function.parameters.iter() {
-        match param.convert_to_java_type() {
+        match param.java_type {
             PossibleJavaType::Byte => {
                 s += &format!(
                     "  char {}{} = {};\n",
@@ -392,7 +392,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
 
     s += &format!("  {}(", c_function.name);
     for (index, param) in c_function.parameters.iter().enumerate() {
-        match param.convert_to_java_type() {
+        match param.java_type {
             PossibleJavaType::Byte | PossibleJavaType::Short | PossibleJavaType::Int => {
                 if param.pointer_depth == 1 {
                     s += &format!("&");
