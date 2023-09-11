@@ -1,7 +1,5 @@
-use std::any::type_name;
-
-use crate::java_type::{self, PossibleJavaType};
-use tree_sitter::{Node, Parser, Query, QueryCursor};
+use crate::java_type::PossibleJavaType;
+use tree_sitter::Node;
 
 #[derive(Clone, Debug)]
 pub struct CParameter {

@@ -3,11 +3,11 @@ use std::error;
 use std::fmt;
 use std::fs;
 use std::fs::File;
-use std::io::{self, BufReader, Read, Write};
+use std::io::Write;
 use tree_sitter::{Parser, Query, QueryCursor};
 use unwrap_or::*;
 use yaml_rust::Yaml;
-use yaml_rust::{YamlEmitter, YamlLoader};
+use yaml_rust::YamlLoader;
 
 mod cfunc;
 mod cparam;
