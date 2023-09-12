@@ -28,11 +28,11 @@ impl fmt::Display for PossibleJavaType {
     }
 }
 
-fn extract_function_declarators<'a>(
+fn extract_function_declarators(
     c_lang_parser: &mut Parser,
-    source_code: &'a str,
+    source_code: &str,
 ) -> Option<Vec<CFunction>> {
-    let tree = c_lang_parser.parse(&source_code, None)?;
+    let tree = c_lang_parser.parse(source_code, None)?;
     let query = Query::new(
         tree_sitter_c::language(),
         r#"(declaration
@@ -122,7 +122,7 @@ fn c_info_source(c_functions: &Vec<CFunction>) -> String {
             "  printf(\"    return_type: {}\\n\");\n",
             each_function.return_type
         );
-        s += &format!("  printf(\"    parameters:\\n\");\n");
+        s += "  printf(\"    parameters:\\n\");\n";
         for each_parameter in each_function.parameters.iter() {
             s += &format!(
                 "  printf(\"      - var_name: {}\\n\");\n",
@@ -138,7 +138,7 @@ fn c_info_source(c_functions: &Vec<CFunction>) -> String {
             );
             let mut type_name = each_parameter.type_name.to_string();
             for _ in 0..each_parameter.pointer_depth {
-                type_name += &format!("*");
+                type_name += "*";
             }
             s += &format!(
                 "  printf(\"        type_size: %lu\\n\", sizeof({}));\n",
@@ -296,7 +296,8 @@ fn get_java_file_content(c_function: &CFunction) -> String {
                 s += &format!("storageToInt(argStorages[{}])", i);
             }
             PossibleJavaType::ByteArray => {
-                s += &format!("{}", parameter_type.var_name);
+                //s += &format!("{}", parameter_type.var_name);
+                s += parameter_type.var_name.to_string().as_str();
             }
         };
         if i != num_of_parameters - 1 {
@@ -331,7 +332,8 @@ fn get_c_file_content(c_function: &CFunction) -> String {
 
     s += &format!("extern {} {}(", c_function.return_type, c_function.name);
     for (index, param) in c_function.parameters.iter().enumerate() {
-        s += &format!("{}", param.type_name);
+        //s += &format!("{}", param.type_name);
+        s += param.type_name.to_string().as_str();
         if param.pointer_depth > 0 {
             s += "*";
         }
@@ -345,7 +347,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
         "JNIEXPORT void JNICALL Java_{}_{}\n",
         c_function.name, c_function.name
     );
-    s += &format!("(JNIEnv *env , jobject object");
+    s += "(JNIEnv *env , jobject object";
 
     for param in c_function.parameters.iter() {
         match param.java_type {
@@ -385,7 +387,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
                 );
             }
             PossibleJavaType::ByteArray => {
-                s += &format!("// Generatoin code for Byte Array not implemented\n");
+                s += "// Generatoin code for Byte Array not implemented\n";
             }
         }
     }
@@ -395,7 +397,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
         match param.java_type {
             PossibleJavaType::Byte | PossibleJavaType::Short | PossibleJavaType::Int => {
                 if param.pointer_depth == 1 {
-                    s += &format!("&");
+                    s += "&";
                 }
                 s += &format!("{}{}", C_LOCAL_PARAM_PREFIX, param.var_name);
             }

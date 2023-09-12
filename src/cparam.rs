@@ -16,9 +16,9 @@ impl CParameter {
         Self {
             var_name: var_name.to_string(),
             type_name: type_name.to_string(),
-            pointer_depth: pointer_depth,
-            type_size: type_size,
-            java_type: java_type,
+            pointer_depth,
+            type_size,
+            java_type,
         }
     }
 
