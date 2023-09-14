@@ -327,12 +327,12 @@ static C_LOCAL_PARAM_PREFIX: &'static str = "oc4j_glue_";
 fn get_c_file_content(c_function: &CFunction) -> String {
     let mut s = "".to_string();
     s += &format!("#include \"{}.h\"\n", c_function.name);
+    s += "#include \"custom.h\"";
 
     let num_of_params = c_function.parameters.len();
 
     s += &format!("extern {} {}(", c_function.return_type, c_function.name);
     for (index, param) in c_function.parameters.iter().enumerate() {
-        //s += &format!("{}", param.type_name);
         s += param.type_name.to_string().as_str();
         if param.pointer_depth > 0 {
             s += "*";
@@ -387,7 +387,18 @@ fn get_c_file_content(c_function: &CFunction) -> String {
                 );
             }
             PossibleJavaType::ByteArray => {
-                s += "// Generatoin code for Byte Array not implemented\n";
+                s += &format!(
+                    "  jbyte* jbytes_{} = (*env)->getByteArrayElements(env, {}, NULL);\n",
+                    param.var_name, param.var_name,
+                );
+                s += &format!(
+                    "  {} {}{};\n",
+                    param.type_name, C_LOCAL_PARAM_PREFIX, param.var_name,
+                );
+                s += &format!(
+                    "  memcpy(&{}{}, jbytes_{}, {});\n",
+                    C_LOCAL_PARAM_PREFIX, param.var_name, param.var_name, param.type_size,
+                );
             }
         }
     }
