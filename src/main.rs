@@ -114,6 +114,7 @@ fn extract_function_declarators(
 
 fn c_info_source(c_functions: &Vec<CFunction>) -> String {
     let mut s = "#include <stdio.h>\n".to_string();
+    s = "#include \"custom.h\"\n".to_string();
     s += "int main() {\n";
     s += "  printf(\"functions:\\n\");\n";
     for each_function in c_functions.iter() {
@@ -137,8 +138,10 @@ fn c_info_source(c_functions: &Vec<CFunction>) -> String {
                 each_parameter.pointer_depth
             );
             let mut type_name = each_parameter.type_name.to_string();
-            for _ in 0..each_parameter.pointer_depth {
-                type_name += "*";
+            if each_parameter.is_primitive_type() {
+                for _ in 0..each_parameter.pointer_depth {
+                    type_name += "*";
+                }
             }
             s += &format!(
                 "  printf(\"        type_size: %lu\\n\", sizeof({}));\n",
@@ -327,7 +330,7 @@ static C_LOCAL_PARAM_PREFIX: &'static str = "oc4j_glue_";
 fn get_c_file_content(c_function: &CFunction) -> String {
     let mut s = "".to_string();
     s += &format!("#include \"{}.h\"\n", c_function.name);
-    s += "#include \"custom.h\"";
+    s += "#include \"custom.h\"\n";
 
     let num_of_params = c_function.parameters.len();
 
@@ -388,7 +391,7 @@ fn get_c_file_content(c_function: &CFunction) -> String {
             }
             PossibleJavaType::ByteArray => {
                 s += &format!(
-                    "  jbyte* jbytes_{} = (*env)->getByteArrayElements(env, {}, NULL);\n",
+                    "  jbyte* jbytes_{} = (*env)->GetByteArrayElements(env, {}, NULL);\n",
                     param.var_name, param.var_name,
                 );
                 s += &format!(
@@ -405,15 +408,10 @@ fn get_c_file_content(c_function: &CFunction) -> String {
 
     s += &format!("  {}(", c_function.name);
     for (index, param) in c_function.parameters.iter().enumerate() {
-        match param.java_type {
-            PossibleJavaType::Byte | PossibleJavaType::Short | PossibleJavaType::Int => {
-                if param.pointer_depth == 1 {
-                    s += "&";
-                }
-                s += &format!("{}{}", C_LOCAL_PARAM_PREFIX, param.var_name);
-            }
-            _ => {}
+        if param.pointer_depth == 1 {
+            s += "&";
         }
+        s += &format!("{}{}", C_LOCAL_PARAM_PREFIX, param.var_name);
         if index < num_of_params - 1 {
             s += ", ";
         }

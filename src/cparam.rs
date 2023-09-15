@@ -38,6 +38,18 @@ impl CParameter {
         )
     }
 
+    pub fn is_primitive_type(&self) -> bool {
+        match self.type_name.as_str() {
+            "int" => true,
+            "unsigned int" => true,
+            "char" => true,
+            "unsigned char" => true,
+            "short" => true,
+            "unsigned short" => true,
+            _ => false,
+        }
+    }
+
     fn convert_to_java_type(type_name: &str) -> PossibleJavaType {
         match type_name {
             "int" => PossibleJavaType::Int,
