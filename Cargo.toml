@@ -14,3 +14,9 @@ unwrap_or = "1.0.1"
 
 [build-dependencies]
 cc = "*"
+
+[[bin]]
+name = "cobj-c-glue"
+test = false
+bench = false
+path = "src/main.rs"
