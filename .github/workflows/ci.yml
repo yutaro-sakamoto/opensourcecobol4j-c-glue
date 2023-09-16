@@ -80,4 +80,4 @@ jobs:
       run: cargo test --verbose
     
     - name: Integration tests
-      run: ./test.sh
+      run: make
