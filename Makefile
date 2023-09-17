@@ -10,13 +10,15 @@ C_FLAGS_JNI_MODULE = -shared -fPIC
 JAVAC = javac
 JAVA = java
 COBJ = cobj
+C_INFO_OUTUT_SOURCE = info.c
+C_INFO_OUTUT_BIN = ./info
+TEST_C_SOURCE = tests/basic/basic.c
+TEST_C_BIN = basic.o
+FUNCTIONS_SCHEMA = function_schema.yml
 
-all: $(COBJ_C_GLUE)
-	$(COBJ_C_GLUE) parse_c <(cproto -f 3 tests/basic/basic.c) > info.c
-	$(CC) -c tests/basic/basic.c -o basic.o
-	$(CC) info.c -o info
-	./info | tee function_schema.yml
-	$(COBJ_C_GLUE) generate_java function_schema.yml
+all: $(COBJ_C_GLUE) $(C_INFO_OUTUT_BIN) $(FUNCTIONS_SCHEMA)
+	$(CC) -c $(TEST_C_SOURCE) -o $(TEST_C_BIN)
+	$(COBJ_C_GLUE) generate_java $(FUNCTIONS_SCHEMA)
 	$(JAVAC) -h . *.java
 	$(COBJ_C_GLUE) generate_c function_schema.yml
 	$(CC) $${OC4J_C_GLUE_JNI_INCLUDE} -shared -fPIC -o libinit.so init.c basic.o
@@ -27,3 +29,12 @@ all: $(COBJ_C_GLUE)
 
 $(COBJ_C_GLUE): $(COBJ_C_GLUE_SRC)
 	cargo build --release
+
+$(C_INFO_OUTUT_BIN): $(C_INFO_OUTUT_SOURCE)
+	$(CC) info.c -o $(C_INFO_OUTUT_BIN)
+
+$(C_INFO_OUTUT_SOURCE): $(TEST_C_SOURCE)
+	$(COBJ_C_GLUE) parse_c <(cproto -f 3 $(TEST_C_SOURCE)) > ${C_INFO_OUTUT_SOURCE}
+
+$(FUNCTIONS_SCHEMA): $(C_INFO_OUTUT_BIN)
+	$(C_INFO_OUTUT_BIN) > $(FUNCTIONS_SCHEMA)
