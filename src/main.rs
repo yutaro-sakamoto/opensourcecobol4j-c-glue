@@ -448,10 +448,18 @@ fn read_c_functions_from_yml(rest: &Vec<String>) -> Result<Vec<CFunction>, GlueE
     Ok(c_functions)
 }
 
+fn output_makefile(c_functions: &Vec<CFunction>, makefile_path: &str) {
+    let mut output_file = File::create(makefile_path).unwrap();
+    for c_function in c_functions.iter() {
+        write!(output_file, "{}\n", c_function.name);
+    }
+}
+
 fn main() -> Result<(), GlueError> {
     let (args, rest) = unwrap_ok_or! {opts! {
         synopsis "Generate glue code for C functions and opensource COBOL 4J";
         param mode:Option<String>, desc:"Specify running mode.";
+        opt makefile_path:Option<String>, desc:"Specify the path of the generated Makefile.";
     }.parse(),
     _,
     return Err(GlueError::InvalidCommandlineArguments)};
@@ -486,22 +494,13 @@ fn main() -> Result<(), GlueError> {
                 return Err(GlueError::InvalidCFormat(c_file_path.to_string()))
             };
             println!("{}", c_info_source(&c_functions));
+            match args.makefile_path {
+                Some(s) => output_makefile(&c_functions, &s),
+                _ => output_makefile(&c_functions, "Makefile_output"),
+            };
         }
         RunningMode::GenerateJava => {
             let c_functions = read_c_functions_from_yml(&rest)?;
-            for c_function in c_functions.iter() {
-                println!("func_name: {}", c_function.name);
-                println!("return_type: {}", c_function.return_type);
-                println!("parameters:");
-                for c_parameter_type in c_function.parameters.iter() {
-                    println!("  ---");
-                    println!("  var_name: {}", c_parameter_type.var_name);
-                    println!("  type_name: {}", c_parameter_type.type_name);
-                    println!("  pointer_depth: {}", c_parameter_type.pointer_depth);
-                    println!("  type_size: {}", c_parameter_type.type_size);
-                }
-                println!("==========");
-            }
 
             for c_function in c_functions.iter() {
                 let java_file_path = &format!("{}.java", c_function.name);
